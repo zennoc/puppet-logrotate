@@ -60,7 +60,7 @@
 # [*noops*]
 #   Set noop metaparameter to true for all the resources managed by the module.
 #   Basically you can run a dryrun for this specific module if you set
-#   this to true. Default: false
+#   this to true. Default: undef
 #
 # Default class params - As defined in logrotate::params.
 # Note that these variables are mostly defined and used in the module itself,
@@ -99,7 +99,8 @@ class logrotate (
   $noops               = params_lookup( 'noops' ),
   $package             = params_lookup( 'package' ),
   $config_dir          = params_lookup( 'config_dir' ),
-  $config_file         = params_lookup( 'config_file' )
+  $config_file         = params_lookup( 'config_file' ),
+  $files               = params_lookup( 'files' )
   ) inherits logrotate::params {
 
   $config_file_mode=$logrotate::params::config_file_mode
@@ -109,7 +110,6 @@ class logrotate (
   $bool_source_dir_purge=any2bool($source_dir_purge)
   $bool_absent=any2bool($absent)
   $bool_audit_only=any2bool($audit_only)
-  $bool_noops=any2bool($noops)
 
   ### Definition of some variables used in the module
   $manage_package = $logrotate::bool_absent ? {
@@ -145,7 +145,7 @@ class logrotate (
   ### Managed resources
   package { $logrotate::package:
     ensure  => $logrotate::manage_package,
-    noop    => $logrotate::bool_noops,
+    noop    => $logrotate::noops,
   }
 
   file { 'logrotate.conf':
@@ -159,7 +159,13 @@ class logrotate (
     content => $logrotate::manage_file_content,
     replace => $logrotate::manage_file_replace,
     audit   => $logrotate::manage_audit,
-    noop    => $logrotate::bool_noops,
+    noop    => $logrotate::noops,
+  }
+
+  ### Create instances for integration with Hiera
+  if $files != {} {
+    validate_hash($files)
+    create_resources(logrotate::file, $files)
   }
 
   # The whole logrotate configuration directory can be recursively overriden
@@ -175,7 +181,7 @@ class logrotate (
       force   => $logrotate::bool_source_dir_purge,
       replace => $logrotate::manage_file_replace,
       audit   => $logrotate::manage_audit,
-      noop    => $logrotate::bool_noops,
+      noop    => $logrotate::noops,
     }
   }
 
